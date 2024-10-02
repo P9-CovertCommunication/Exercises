@@ -79,7 +79,7 @@ def run_experiment(f_metric, train_num_subn, test_num_subn, trainsh_sd, testsh_s
     
     #Training
     print('#### Training Model ####')
-    model2 = lr_H_mat_code.PCGNN().to('cuda')
+    model2 = lr_H_mat_code.PCGNN().to(device)
     model_name = f_metric + 'sh_sd' + str(trainsh_sd)
     optimizer = torch.optim.Adam(model2.parameters(), lr=0.0001)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)
@@ -192,8 +192,8 @@ def run_experiment(f_metric, train_num_subn, test_num_subn, trainsh_sd, testsh_s
     plt.xlabel('SE (b/s/Hz)')
     
       
-       
-       
+if __name__ == '__main__':
+    run_experiment('hH',20,10,7,4,'cpu')
        
        
        
