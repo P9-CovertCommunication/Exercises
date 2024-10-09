@@ -1,13 +1,13 @@
 %% Distributed Channel Allocation for Mobile 6G Subnetworks via Multi-Agent Deep Q-Learning
 clc
 clear all
-N = 25;                     %
+N = 10;                     %
 S_sd = 5; 
 rngSeed = 1;
 rng(rngSeed);
 type = 'corr';
 powerLevels = db2pow(0); 
-K = 4;
+K = 3;
 obj = subnetwork_classC(N, S_sd, K, powerLevels, type);
 
 %%

@@ -37,7 +37,7 @@ class init_parameters:
 
 f_metric_ = ['hH','dD', 'hD']   #hH, dD, hD #The type of graph attribute hH - use full channel gain, dD - use only distance information, hD - use desired link channel gain and interfering link distances
 
-def run_experiment(f_metric, train_num_subn, test_num_subn, trainsh_sd, testsh_sd, device):
+def run_experiment(f_metric : str, train_num_subn : int, test_num_subn : int, trainsh_sd : float, testsh_sd : float, device : str):
     #f_metric options - hH, dD, hD #The type of graph attribute hH - use full channel gain, dD - use only distance information, hD - use desired link channel gain and interfering link distances  
     #train_num_subn - number of subnetworks in training deployment - choose between values 20, 25, 10, for larger values, there is a need to increase self.deploy_length
     #test_num_subn  - number of subnetworks in testing deployments - choose between values 20, 25, 10, for larger values, there is a need to increase self.deploy_length
@@ -79,7 +79,7 @@ def run_experiment(f_metric, train_num_subn, test_num_subn, trainsh_sd, testsh_s
     
     #Training
     print('#### Training Model ####')
-    model2 = lr_H_mat_code.PCGNN().to('cuda')
+    model2 = lr_H_mat_code.PCGNN().to(device)
     model_name = f_metric + 'sh_sd' + str(trainsh_sd)
     optimizer = torch.optim.Adam(model2.parameters(), lr=0.0001)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.9)
@@ -195,5 +195,6 @@ def run_experiment(f_metric, train_num_subn, test_num_subn, trainsh_sd, testsh_s
        
        
        
-       
+if __name__ == "__main__":
+    run_experiment('hH', 20, 20, 5, 5, 'cpu')
        
