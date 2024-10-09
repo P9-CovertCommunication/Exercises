@@ -192,8 +192,8 @@ def run_experiment(f_metric : str, train_num_subn : int, test_num_subn : int, tr
     plt.xlabel('SE (b/s/Hz)')
     
       
-       
-       
+if __name__ == '__main__':
+    run_experiment('hH',20,10,7,4,'cpu')
        
 if __name__ == "__main__":
     run_experiment('hH', 20, 20, 5, 5, 'cpu')

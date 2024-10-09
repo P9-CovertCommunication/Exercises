@@ -5,7 +5,7 @@ N = 10;                     %
 S_sd = 5; 
 rngSeed = 1;
 rng(rngSeed);
-type = 'corr';
+type = 'random';
 powerLevels = db2pow(0); 
 K = 3;
 obj = subnetwork_classC(N, S_sd, K, powerLevels, type);

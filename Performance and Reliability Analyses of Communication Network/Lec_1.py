@@ -1,4 +1,14 @@
-# Write a code simulating a behavior of a system consisting of 10 servers and having Blocked
+#################################################################################################
+#                                                                                               #
+# This is the property of the Authors, we gladly accept donations in the form of beer.          #
+# Authors: Anders Bundgaard and Nicolai Lyholm                                                  #                                                   
+# Date: 23/9/2024                                                                               #      
+#                                                                                               #
+#################################################################################################
+
+# 
+# 
+#  Write a code simulating a behavior of a system consisting of 10 servers and having Blocked
 # Call Cleared (BCC) behavior.
 # Consider 4 different cases:
 # 1. Poisson arrivals, exponential service times.
@@ -21,6 +31,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pickle
+import math
+RUN_SIM = False
+
+def erlang_b(servers, offered_load):
+    offered_load = offered_load
+    servers = servers
+    erlang_b = ((offered_load**servers)/math.factorial(servers))/np.sum([(offered_load**i)/math.factorial(i) for i in range(servers+1)])
+    return erlang_b
 
 def BCC_simulator(arrival : str, service : str, customers : int): 
     arrival_rate = 4
@@ -71,41 +89,62 @@ def BCC_simulator(arrival : str, service : str, customers : int):
     return percent_blocked, percent_blocked_time
 
 if __name__ == "__main__":
+    if RUN_SIM:
+        data_dict = {}
+        
+        for Customers in [100, 10000, 100000]:   
+            sum_percent_blocked = 0
+            sum_percent_blocked_time = 0
+            for arrival_process in ["M", "C"]:
+                for service_process in ["M", "C"]:
+                    num_simulations = int(10**7/Customers)
+                    blocked_List = []
+                    blocked_time_list = []
+                    for _ in tqdm(range(num_simulations)):     
+                        blocked, blocked_time = BCC_simulator(arrival_process, service_process, int(Customers))
+                        blocked_List.append(blocked)
+                        blocked_time_list.append(blocked_time)
+                        
+                    print(f"Number of customers: {Customers}, Queue: {arrival_process}/ {service_process} /10/0")
+                    print(f"Average Percentage of blocked calls: {np.mean(blocked_List)*100} [%]")
+                    print(f"sample variance of blocked calls: {np.var(blocked_List)*100} [%]")
+                    print(f"Average Percentage of time in blocked state: {np.mean(blocked_time_list)*100}[%]")
+                    print(f"sample variance of blocked time: {np.var(blocked_time_list)*100} [%]")
 
-    data_dict = {}
+                    print("\n")
+                    
+                    key = (Customers, arrival_process, service_process)
+                    data_dict[key] = {
+                        "Mean blocked [%]": np.mean(blocked_List)*100,
+                        "Variance blocked [%]": np.var(blocked_List)*100,
+                        "Mean blocked Time [s]": np.mean(blocked_time_list)*100,
+                        "Variance blocked time [s]": np.var(blocked_time_list)*100
+                    }
+            #Save dict as pickle
+        with open('saved_dictionary.pkl', 'wb') as f:
+            pickle.dump(data_dict, f)
+        print("Simulation completed")
     
-    for Customers in [100, 10000, 100000]:   
-        sum_percent_blocked = 0
-        sum_percent_blocked_time = 0
-        for arrival_process in ["M", "C"]:
-            for service_process in ["M", "C"]:
-                num_simulations = int(10**6/Customers)
-                blocked_List = []
-                blocked_time_list = []
-                for _ in tqdm(range(num_simulations)):     
-                    blocked, blocked_time = BCC_simulator(arrival_process, service_process, int(Customers))
-                    blocked_List.append(blocked)
-                    blocked_time_list.append(blocked_time)
-                print(f"Number of customers: {Customers}, Queue: {arrival_process}/ {service_process} /10/0")
-                print("Average Percentage of blocked calls: ", np.mean(blocked_List))
-                print("sample variance of blocked calls: ", np.var(blocked_List))
-                print("Average Percentage of time in blocked state: ", np.mean(blocked_time_list))
-                print("sample variance of blocked time: ", np.var(blocked_time_list))
+    else:
+        # print(erlang_b(10, 9.6)*100)
+        with open('saved_dictionary.pkl', 'rb') as f:
+            data = pickle.load(f)
 
-                print("\n")
-                
-                key = (Customers, arrival_process, service_process)
-                data_dict[key] = {
-                    "Blocked Percent": avg_blocked_calls,
-                    "Variance blocked percent": var_blocked_calls,
-                    "Blocked Time": avg_blocked_time,
-                    "Variance blocked time": var_blocked_time
-                   
-                }
-    
-    #Save dict as pickle
-    with open('saved_dictionary.pkl', 'wb') as f:
-        pickle.dump(data_dict, f)
-    print("Simulation completed")
-                
+        for customers in [100, 10000, 100000]:
+            print(f"========================Customers {customers}========================")
+            print("\n")
+            for arrival_process in ["M", "C"]:
+                    for service_process in ["M", "C"]:
+                        key = (customers, arrival_process, service_process)
+                        print(f"========RESULTS {arrival_process}/{service_process}/10/0========")
+                        print(f"Simulated mean blocking: {data[key]["Mean blocked [%]"]:.5f} % | Var {data[key]["Variance blocked [%]"]:.5f} %")
+                        print(f"Simulated mean blocking time: {data[key]["Mean blocked Time [s]"]:.5f} s | Var {data[key]["Variance blocked time [s]"]:.5f} s")
+                        
+                        print(f"Erlang B blocking: {erlang_b(10, 9.6)*100:.5f}")    
+                        print("\n")
+            print("\n")
+            print("\n")
+        print(f"To conclude:\nIt can be seen that the Erlang B blocking probability is very close to the simulated blocking probability when the Arrical process is Memoryless/poisson")
+        print(f"It can also be seen that the variance of the blocking time fals when the number of customers increases, i.e. if one does not take a mean over many simulations the no. customers must be high")   
 
+                

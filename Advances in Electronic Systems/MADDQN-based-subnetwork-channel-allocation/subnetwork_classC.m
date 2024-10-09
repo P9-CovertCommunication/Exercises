@@ -2,7 +2,7 @@ classdef subnetwork_classC
     properties
         num_of_subnetworks int16 = 10
         deploy_length double = 10  
-        factoryArea double = [10, 10]
+        factoryArea double = [20, 20]
         subnet_radius double = 3
         minD double = 1 
         minDistance double = 1*3
@@ -106,6 +106,7 @@ classdef subnetwork_classC
             end
             if nValid < obj.num_of_subnetworks
                 loc = -1;
+                disp("Error ")
             else
                 
                 Xtemp = X+obj.factoryArea(1)/2;

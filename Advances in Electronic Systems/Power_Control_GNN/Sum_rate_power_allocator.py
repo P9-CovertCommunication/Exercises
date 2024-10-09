@@ -175,7 +175,7 @@ def test(model2,validation_loader, num_of_subnetworks, Noise_power, device):
         data = data.to(device)
         with torch.no_grad():
             out = model2(data)
-            loss = myloss2(out[:,0].to('cuda'), data, data.num_graphs,num_of_subnetworks,Noise_power, device)
+            loss = myloss2(out[:,0].to(device), data, data.num_graphs,num_of_subnetworks,Noise_power, device)
             total_loss += loss.item()
             count = count+1
     total = total_loss / count
