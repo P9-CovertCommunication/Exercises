@@ -98,6 +98,7 @@ if __name__ == "__main__":
     mm1(service_rate=1.2, arrival_rate=1, num_customers=10**3)
     mm1(service_rate=1.2, arrival_rate=1, num_customers=10**5)
     mm1(service_rate=1.2, arrival_rate=1, num_customers=10**7)
+    mm1(service_rate=1.5, arrival_rate=1, num_customers=10**7)
     mm1(service_rate=2, arrival_rate=1, num_customers=10**7)
     
     
