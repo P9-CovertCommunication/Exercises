@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>T3&period; Performance and Reliability Analysis of Communication Networks</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="t3-performance-and-reliability-analysis-of-communication-networks">T3. Performance and Reliability Analysis of Communication Networks</h1>
+<h2 id="task-1---discuss-the-operation-of-a-connection-oriented-packet-switched-network">Task 1 - Discuss the operation of a connection-oriented packet-switched network.</h2>
+<p>A connection-oriented packet-switched network utilizes properties from both a connection-based network and a packet-switching network. This means it uses the notion of packetization of larger messages, and transmits them on predefined routes (virtual connections). Unlike connectionless networks packets are transmitted sequentially, rather than routed independently. This lowers the overhead as the adress information is only need in the establishment of the virtual circut, rather than for each packet. At the end of a transmision the virtual connection is terminated freeing the resources.</p>
+<h2 id="task-2-revisit---differentiate-between-circuit-switched-and-packet-switched-networks">Task 2 (Revisit) - differentiate between circuit-switched and packet-switched networks</h2>
+<p>In a Circuit-switched network a physical link is reserved for communication, this is useful in real-time traffic, as channel resources are allocated to the network it will ensure that the network is in full control of congestion on the network.
+In circuit-switching, there is no notion of packetizing, meaning data is transmitted sequentially and there is no need for reassembling of the message at the receiver. As a fixed route is establsied at the beginning there is no need for address information in subsequent messages, lowering the overhead. If the traffic varies in data rate it will result excessive allocation of resources at times. This inefficient use of ressource result in more ekspensive network construktion cost.</p>
+<p>The primary difference in packet-switching networks is the introduction of packetization, which splits large messages into packets which can be handled according to some protocol. Here the notion of connection-oriented or connectionless networks determine how each individual packet is treated in the network. If the network is connectionless, each packet is routed and transmitted independently, with no guarantee for correct ordering at the receiver. On the other hand connection-oriented networks use the same concept of establishing a circuit (albeit a virtual one), where packets are transmitted sequentially along predetermined routes. This leads to the connectionless variant requiring more overhead, as each packet must contain address information.</p>
+<p>In regards to billing, packet-switching will be data size based, where circuit-switching will be time based i.e. how long you were on your phone.</p>
+<div style="text-align: center;">
+  <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T3_Network_layer/Packet-circuit%20switching.png", width="500"/>
+</div>
+<h2 id="task-3---how-does-tcp-work">Task 3 - How does TCP work?</h2>
+<h3 id="setup-phase">Setup phase</h3>
+<p>In the setup phase a there way handshake establish the connection. Before the setup is possible, must the server be binde to a port that the Client can access. In the 3 way handshake.</p>
+<ol>
+<li><strong>SYN:</strong> The client sends a random 32 bit segment's sequence number A, oppening the serverport.</li>
+<li><strong>SYN-ACK:</strong> The server acknowlegeds the SYN with a SYN-ACK with a 32 bit acknowlegdement number with the recived segment's sequence number + 1(A+1), and an with a random sequence number B</li>
+<li><strong>ACK:</strong> The Client then Acknowlegdes the server ACK with a sequens number of A+1 and a Acknowlegdement number of B+1.</li>
+</ol>
+<h3 id="data-transfer-phase">Data transfer phase</h3>
+<h3 id="teardown-phase">Teardown phase</h3>
+<h2 id="task-4---differentiate-tcp-and-udp-which-of-these-protocols-is-better-and-for-what-applications">Task 4 - differentiate TCP and UDP. Which of these protocols is better, and for what applications?</h2>
+<h2 id="task-5---discuss-tcp-features-and-why-they-are-important">Task 5 - Discuss TCP features and why they are important</h2>
+<h2 id="task-6---what-is-hol-blocking-problem-discuss-potential-solutions">Task 6 - What is HoL blocking problem? Discuss potential solutions</h2>
+
+            
+            
+        </body>
+        </html>
