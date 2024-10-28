@@ -139,17 +139,26 @@
         </head>
         <body class="vscode-body vscode-light">
             <h1 id="t3-performance-and-reliability-analysis-of-communication-networks">T3. Performance and Reliability Analysis of Communication Networks</h1>
+<h2 id="this-is-the-property-of-the-authors-we-gladly-accept-donations-in-the-form-of-beer">This is the property of the Authors, we gladly accept donations in the form of beer.</h2>
+<ul>
+<li>Authors: Anders Bundgaard and Nicolai Lyholm</li>
+<li>Date: 28/10/2024</li>
+</ul>
 <h2 id="task-1---discuss-the-operation-of-a-connection-oriented-packet-switched-network">Task 1 - Discuss the operation of a connection-oriented packet-switched network.</h2>
 <p>A connection-oriented packet-switched network utilizes properties from both a connection-based network and a packet-switching network. This means it uses the notion of packetization of larger messages, and transmits them on predefined routes (virtual connections). Unlike connectionless networks packets are transmitted sequentially, rather than routed independently. This lowers the overhead as the adress information is only need in the establishment of the virtual circut, rather than for each packet. At the end of a transmision the virtual connection is terminated freeing the resources.</p>
 <h2 id="task-2-revisit---differentiate-between-circuit-switched-and-packet-switched-networks">Task 2 (Revisit) - differentiate between circuit-switched and packet-switched networks</h2>
 <p>In a Circuit-switched network a physical link is reserved for communication, this is useful in real-time traffic, as channel resources are allocated to the network it will ensure that the network is in full control of congestion on the network.
-In circuit-switching, there is no notion of packetizing, meaning data is transmitted sequentially and there is no need for reassembling of the message at the receiver. As a fixed route is establsied at the beginning there is no need for address information in subsequent messages, lowering the overhead. If the traffic varies in data rate it will result excessive allocation of resources at times. This inefficient use of ressource result in more ekspensive network construktion cost.</p>
+In circuit-switching, there is no notion of packetizing, meaning data is transmitted sequentially and there is no need for reassembling of the message at the receiver. As a fixed route is establsied at the beginning there is no need for address information in subsequent messages, lowering the overhead. If the traffic varies in data rate it will result excessive allocation of resources at times. This inefficient use of resources result in more expensive network construction cost.</p>
 <p>The primary difference in packet-switching networks is the introduction of packetization, which splits large messages into packets which can be handled according to some protocol. Here the notion of connection-oriented or connectionless networks determine how each individual packet is treated in the network. If the network is connectionless, each packet is routed and transmitted independently, with no guarantee for correct ordering at the receiver. On the other hand connection-oriented networks use the same concept of establishing a circuit (albeit a virtual one), where packets are transmitted sequentially along predetermined routes. This leads to the connectionless variant requiring more overhead, as each packet must contain address information.</p>
 <p>In regards to billing, packet-switching will be data size based, where circuit-switching will be time based i.e. how long you were on your phone.</p>
 <div style="text-align: center;">
   <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T3_Network_layer/Packet-circuit%20switching.png", width="500"/>
 </div>
 <h2 id="task-3---how-does-tcp-work">Task 3 - How does TCP work?</h2>
+<p>An illustration of the message flow during the three phases in TCP is illustrated below:</p>
+<div style="text-align: center;">
+  <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/refs/heads/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T3_Network_layer/TCP-diagram.png", width="500"/>
+</div>
 <h3 id="setup-phase">Setup phase</h3>
 <p>In the setup phase a there way handshake establish the connection. Before the setup is possible, the server must be bound to a port which the client can access.</p>
 <p>The 3-way handshake consists of:</p>
@@ -175,9 +184,6 @@ In circuit-switching, there is no notion of packetizing, meaning data is transmi
 <li><strong>Server Fin</strong> - The server sends the fin flag, indicating the connection should be closed</li>
 <li><strong>Client Fin-ACK</strong> - The client acknowledges the reception of the fin flag and the connection is fully-closed.</li>
 </ol>
-<div style="text-align: center;">
-  <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/refs/heads/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T3_Network_layer/Teardown-phase.png", width="500"/>
-</div>
 <h2 id="task-4---differentiate-tcp-and-udp-which-of-these-protocols-is-better-and-for-what-applications">Task 4 - Differentiate TCP and UDP. Which of these protocols is better, and for what applications?</h2>
 <p>User Datagram Protocol (UDP), is typically preferred in applications such as video streaming, where real-time transmission of data is of more importance than correct ordering or guaranteed reception. Due to the simplicity (No ACK or retransmission) and low overhead (8 B) of UDP, it provides freedom to implement application layer based layer flow control, which has given rise to protocols such as QUIC, which keeps the low overhead of traditional UDP, while borrowing concepts and functionality from TCP.</p>
 <p>At the cost of larger overhead (20-60 B) Transmission Control Protocol (TCP) comes with a rich feature set such as congestion control, acknowledgements (ACKs) Retransmission, Flow control and reordering of packets. TCP is therefore suited for non real-time traffic, as it ensures all packets are reaching the destination, and are ordered correctly.</p>
