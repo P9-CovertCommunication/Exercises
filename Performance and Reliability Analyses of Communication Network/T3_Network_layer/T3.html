@@ -151,17 +151,51 @@ In circuit-switching, there is no notion of packetizing, meaning data is transmi
 </div>
 <h2 id="task-3---how-does-tcp-work">Task 3 - How does TCP work?</h2>
 <h3 id="setup-phase">Setup phase</h3>
-<p>In the setup phase a there way handshake establish the connection. Before the setup is possible, must the server be binde to a port that the Client can access. In the 3 way handshake.</p>
+<p>In the setup phase a there way handshake establish the connection. Before the setup is possible, the server must be bound to a port which the client can access.</p>
+<p>The 3-way handshake consists of:</p>
 <ol>
-<li><strong>SYN:</strong> The client sends a random 32 bit segment's sequence number A, oppening the serverport.</li>
-<li><strong>SYN-ACK:</strong> The server acknowlegeds the SYN with a SYN-ACK with a 32 bit acknowlegdement number with the recived segment's sequence number + 1(A+1), and an with a random sequence number B</li>
+<li><strong>SYN:</strong> The client sends a random 32 bit segment sequence number A, thereby opening the server port.</li>
+<li><strong>SYN-ACK:</strong> The server acknowledges the SYN by sending a SYN-ACK with a 32 bit acknowlegdement number with the recived segments sequence number + 1 (A+1), along with a random sequence number B</li>
 <li><strong>ACK:</strong> The Client then Acknowlegdes the server ACK with a sequens number of A+1 and a Acknowlegdement number of B+1.</li>
 </ol>
+<p>Once the setup phase is complete, the data transfer phase can begin.</p>
 <h3 id="data-transfer-phase">Data transfer phase</h3>
+<p>The data transfer phase consists of segmentation and sequencing, where the data stream is split into segments of appropriate sizes, each segment is assigned a sequence number, which establishes the order in which reception should happen. Each segment is assigned a TCP header, which contains this sequence number as well as a field for denoting missing or lost segments.</p>
+<p>Each segment is transmitted sequentially, and the receiver confirms reception by cumulative acknowledgement, meaning it transmits an ACK indicating the sequence number of the last segment which was received correctly. The TCP header provides additional fields like the window size and checksum, used for flow/congestion control, error detection and retransmissions used during data transfer.</p>
+<div style="text-align: center;">
+  <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/refs/heads/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T3_Network_layer/TCP-header.png", width="500"/>
+</div>
 <h3 id="teardown-phase">Teardown phase</h3>
-<h2 id="task-4---differentiate-tcp-and-udp-which-of-these-protocols-is-better-and-for-what-applications">Task 4 - differentiate TCP and UDP. Which of these protocols is better, and for what applications?</h2>
+<p>The teardown phase denotes the procedure used for terminating a TCP connection. The teardown phase procedure consists of:</p>
+<ol>
+<li><strong>Client Fin</strong> - The client sends a message with the <em>Fin</em> flag set, indicating there is no more data to transmit.</li>
+<li><strong>Server Fin-ACK</strong> - Acknowledgement message for the client fin.</li>
+<li><strong>Server data transfer</strong> - The connection is now half-closed, the server will still transfer data since it has not closed its connection.</li>
+<li><strong>Client data ACK</strong> - The client acknowledges the data sent from the server in the half-closed state.</li>
+<li><strong>Server Fin</strong> - The server sends the fin flag, indicating the connection should be closed</li>
+<li><strong>Client Fin-ACK</strong> - The client acknowledges the reception of the fin flag and the connection is fully-closed.</li>
+</ol>
+<div style="text-align: center;">
+  <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/refs/heads/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T3_Network_layer/Teardown-phase.png", width="500"/>
+</div>
+<h2 id="task-4---differentiate-tcp-and-udp-which-of-these-protocols-is-better-and-for-what-applications">Task 4 - Differentiate TCP and UDP. Which of these protocols is better, and for what applications?</h2>
+<p>User Datagram Protocol (UDP), is typically preferred in applications such as video streaming, where real-time transmission of data is of more importance than correct ordering or guaranteed reception. Due to the simplicity (No ACK or retransmission) and low overhead (8 B) of UDP, it provides freedom to implement application layer based layer flow control, which has given rise to protocols such as QUIC, which keeps the low overhead of traditional UDP, while borrowing concepts and functionality from TCP.</p>
+<p>At the cost of larger overhead (20-60 B) Transmission Control Protocol (TCP) comes with a rich feature set such as congestion control, acknowledgements (ACKs) Retransmission, Flow control and reordering of packets. TCP is therefore suited for non real-time traffic, as it ensures all packets are reaching the destination, and are ordered correctly.</p>
 <h2 id="task-5---discuss-tcp-features-and-why-they-are-important">Task 5 - Discuss TCP features and why they are important</h2>
+<ul>
+<li>
+<p><strong>TCP flow and congestion control:</strong> - It is important as it improves the goodput of the transmission while reducing the overall congestion on the network. Hereby allowing for a shared medium.</p>
+</li>
+<li>
+<p><strong>Reordering of packets:</strong> - Important, as incorrectly ordered data would in many cases not make sense. It also allows for Selective Acknowlegement (SACK), meaning the receiver can specify which segments are missing, allowing the transmitter to only retransmit these, rather than all subsequent segments.</p>
+</li>
+</ul>
 <h2 id="task-6---what-is-hol-blocking-problem-discuss-potential-solutions">Task 6 - What is HoL blocking problem? Discuss potential solutions</h2>
+<p>Head of Line (HoL) blocking, refers to the scenario in which packets are being transmitted correctly, but the application is failing to process a packet. This problem occurs in HTTP 2.0 when used TCP due to the in-order delivery requirement from TCP. HTTP 2.0 introduced the concept of having multiple streams over the same TCP connection (reusing the connection for multiple objects). However, since HTTP 2.0 uses a single TCP connection, it is subject to the ordering requirement, meaning, the data from streams are put into a queue and processed in by the application in order. HoL blocking occurs when the application is failing to process a segment of data, meaning the queue is blocked despite being delivered correctly.</p>
+<p>A solution to this problem was introduced in the QUIC protocol, in which the in-order requirement is rephrased to each HTTP stream. Here, each HTTP stream is treated seperately, and the order requirement is limited to the individual streams. This means HoL blocking may still occur, but it is now only blocking a single HTTP stream and not completely restricting the processing of data.</p>
+<div style="text-align: center;">
+  <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/refs/heads/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T3_Network_layer/HoL-blocking.png", width="500"/>
+</div>
 
             
             
