@@ -1,5 +1,7 @@
 # T2. Performance and Reliability Analysis of Communication Networks
-
+## This is the property of the Authors, we gladly accept donations in the form of beer.
+- Authors: Anders Bundgaard and Nicolai Lyholm  
+- Date: 14/10/2024  
 ## Task 1. 
 ### Define entropy H(X) and provide its interpretation.
 The entropy of a random variable describes its uncertainty or the amount of information encoded in this random variable/process. The more information we know in advance (less uncertain about the outcome), the lower the entropy.
