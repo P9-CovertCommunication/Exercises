@@ -62,5 +62,19 @@ Common congestion indicators are:
 - **RTT** - The RTT is the time taken for a packet to travel from the source to the destination and back again. Naturally this time may also be influenced by channel distortions, but it can serve as an indicator of congestion, as it may indicate long queue times at the router. This means buffers are filling up and packets are waiting to be serviced.
 
 ## Task 6. What is the fairness problem in TCP congestion control?
+The Fairness problem in TCP congestion control refres to the problem that more aggressive congestion constrol methodes(Reno) take up all the bandwidth, resulting in devices using the more fair Vegas get a small Congersiton Window. This is due to Vegas using increases in Round Trip time(RTT) as congestion control, resulting Vegas backing of earlyer, then Loss based moddels.  
 
 ## Task 7. Provide an overview of BBR, AQM, and ECN options
+BRR functions using Pacing to operate at the optimum point. Pacing is done using the RTT. A increase in RTT indicates Queue is growin i.e. to fast pace. Decreasses in RTT indicates decreases in Queues 
+
+BRR have a slow start, follow by a drain, where the CWND is reduced to empty out buffers. This is followed by a Bandwidth probe where where the pace is increassed. RTT probe here the CWND is reduced for a while to estimate RTT
+
+BBR seems to do a lot better than CUBIC and is fair, so it’s been widely adopted. However, the reaction to capacity
+drops is slow. 
+
+**Active Queue Management (AQM)**
+This methode requires control of the buffers which can be used to shape traffic. It can use Random Early Dropping (RED) where it discard packets evenly over diffrent flows to prevent congestion. 
+Controlled Delay (CoDel) Can be used determine if a queue consistently causes delays, and drop packets if so
+
+**The ECN option**
+A option in the IP header that allow AQM-enabled routers might set the congestion flag in a packet, instead of dropping packets. So that the TCP endpoints learn of the congestion event. This has the benefit of avoiding retransmissions, and can reduce delay significantly for shorter-lived TCP flows
