@@ -63,6 +63,7 @@ Common congestion indicators are:
 
 ## Task 6. What is the fairness problem in TCP congestion control?
 The Fairness problem in TCP congestion control refres to the problem that more aggressive congestion constrol methodes(Reno) take up all the bandwidth, resulting in devices using the more fair Vegas get a small Congersiton Window. This is due to Vegas using increases in Round Trip time(RTT) as congestion control, resulting Vegas backing of earlyer, then Loss based moddels.  
+![alt text](Fairness_problem.png)
 
 ## Task 7. Provide an overview of BBR, AQM, and ECN options
 BRR functions using Pacing to operate at the optimum point. Pacing is done using the RTT. A increase in RTT indicates Queue is growin i.e. to fast pace. Decreasses in RTT indicates decreases in Queues 
