@@ -20,8 +20,9 @@ Congestion occurs if the incoming packet rate exceeds the outgoing rate, that is
 * **Traffic shaping** - Intelligently scheduling transmissions such that non-urgent data is transmitted during off-peak times can help alleviate congestion, typically a network will experience more traffic during cetrain times of day, if the load can be distributed more evenly this can alleviate the congestion.
 * **Perfect knowledge** - If users have perfect knowledge of the network, that means current buffer conditions, capacity and knowledge of all users on the network, the transmissions can simply be scheduled in a way which avoids transmitting while the buffer is full thereby not needing any retransmissions and reducing congestion.
 * **Optimal routing** - In a network consisting of multiple routers functioning in a packet switched manner, congesion can often occur if many users are routed through the same router causing a bottleneck. Therefore routing in such a way, which utilizes the capacity of all routers will minimize congestion.
-
-![alt text](Congestion_system.png)
+<div style="text-align: center;">
+  <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/refs/heads/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T4_Congestion_control/Congestion_system.png", width="500"/>
+</div>
 
 ## Task 2. What is the bandwidth-delay product? Explain its relation with congestion.
 
@@ -45,7 +46,9 @@ The Slow Start, Collision Avoidance and Fast Recovery phases, were introduced as
   - Once packet loss is detected (due to timeout or 3-acks), a slow start threshold (SSThresh) is set to half the CWND which caused the packet loss. The CWND is either reset to 1 MSS or set to $\mathrm{SSThres} + 3$, depending on the TCP flavour (Tahoe or Reno).
 - **Congestion avoidance** - If the CWND was reset to 1 MSS, the slow start phase begins again, but stops once SSThres is reached, after which Congesion Avoidance begins. In this phase the CWND goes from an exponential growth to a linear growth, thereby carefully approaching the network capacity (like the additive increase phase). Once packet loss is detected a new SSThres is set, CWND is reset and the cycle repeats.
 - **Fast Recovery** - Fast recovery is a mechanism introduced in TCP Reno, which differentiates between packet losses caused by timeout and 3-acks. If the packet loss was caused by 3-acks the CWND is reduced to $\textrm{SSThres}+3$, rather than resetting to 1, which allows for better network utilization. Otherwise, if the packet loss was caused by timeout the CWND is simply reset to 1 MSS (like in TCP Tahoe).
-![alt text](TCP_reno.png)
+<div style="text-align: center;">
+  <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/refs/heads/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T4_Congestion_control/TCP_Reno.png", width="500"/>
+</div>
 
 ## Task 4. Discuss TCP Reno and TC Tahoe
 
@@ -62,8 +65,12 @@ Common congestion indicators are:
 - **RTT** - The RTT is the time taken for a packet to travel from the source to the destination and back again. Naturally this time may also be influenced by channel distortions, but it can serve as an indicator of congestion, as it may indicate long queue times at the router. This means buffers are filling up and packets are waiting to be serviced.
 
 ## Task 6. What is the fairness problem in TCP congestion control?
-The Fairness problem in TCP congestion control refres to the problem that more aggressive congestion constrol methodes(Reno) take up all the bandwidth, resulting in devices using the more fair Vegas get a small Congersiton Window. This is due to Vegas using increases in Round Trip time(RTT) as congestion control, resulting Vegas backing of earlyer, then Loss based moddels.  
-![alt text](Fairness_problem.png)
+The Fairness problem in TCP congestion control refres to the problem that more aggressive congestion constrol methodes(Reno) take up all the bandwidth, resulting in devices using the more fair Vegas get a small Congersiton Window. This is due to Vegas using increases in Round Trip time(RTT) as congestion control, resulting Vegas backing of earlyer, then Loss based moddels.
+
+<div style="text-align: center;">
+  <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/refs/heads/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T4_Congestion_control/Fairness_problem.png", width="500"/>
+</div>
+
 
 ## Task 7. Provide an overview of BBR, AQM, and ECN options
 BRR functions using Pacing to operate at the optimum point. Pacing is done using the RTT. A increase in RTT indicates Queue is growin i.e. to fast pace. Decreasses in RTT indicates decreases in Queues 
