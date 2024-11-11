@@ -1,9 +1,9 @@
 # T4. Performance and Reliability Analysis of Communication Networks
 
-## This is the property of the Authors, we gladly accept donations in the form of beer.
+## This is the property of the Authors, we gladly accept donations in the form of beer
 
 - Authors: Anders Bundgaard and Nicolai Lyholm  
-- Date: 
+- Date: 11/11/2024
 
 ## Task 1. What is congestion? Discuss ways to control congestion
 
@@ -65,7 +65,7 @@ Common congestion indicators are:
 - **RTT** - The RTT is the time taken for a packet to travel from the source to the destination and back again. Naturally this time may also be influenced by channel distortions, but it can serve as an indicator of congestion, as it may indicate long queue times at the router. This means buffers are filling up and packets are waiting to be serviced.
 
 ## Task 6. What is the fairness problem in TCP congestion control?
-The Fairness problem in TCP congestion control refres to the problem that more aggressive congestion constrol methodes(Reno) take up all the bandwidth, resulting in devices using the more fair Vegas get a small Congersiton Window. This is due to Vegas using increases in Round Trip time(RTT) as congestion control, resulting Vegas backing of earlyer, then Loss based moddels.
+The Fairness problem in TCP congestion control refers to the problem that more aggressive congestion control methods (Reno) take up all the bandwidth, resulting in devices using a more fair method (Vegas) getting a smaller congestion window. This happens, due to the fact that Vegas bases the congestion window on changes in RTT, whereas Reno is based on when a packet loss is observed. This causes Vegas to back off early when competing with Reno, due to the RTT increasing which, in Vegas indicates congestion, but in reality it is Reno taking up more bandwidth.
 
 <div style="text-align: center;">
   <img src="https://raw.githubusercontent.com/P9-CovertCommunication/Exercises/refs/heads/main/Performance%20and%20Reliability%20Analyses%20of%20Communication%20Network/T4_Congestion_control/Fairness_problem.png", width="500"/>
@@ -73,16 +73,15 @@ The Fairness problem in TCP congestion control refres to the problem that more a
 
 
 ## Task 7. Provide an overview of BBR, AQM, and ECN options
-BRR functions using Pacing to operate at the optimum point. Pacing is done using the RTT. A increase in RTT indicates Queue is growin i.e. to fast pace. Decreasses in RTT indicates decreases in Queues 
+BRR functions using Pacing to operate at the optimum point. Similarly to TCP Vegas, Pacing is done using the RTT. An increase in RTT indicates the queue is growing i.e. the pace is too fast. Decreases in RTT indicates a shrinking queue length, indicating an underutilization of the network capacity. 
 
-BRR have a slow start, follow by a drain, where the CWND is reduced to empty out buffers. This is followed by a Bandwidth probe where where the pace is increassed. RTT probe here the CWND is reduced for a while to estimate RTT
+BRR operates with a slow start, follow by a drain, where the CWND is reduced to empty out buffers. This is followed by a bandwidth probe where the pace is increased. RTT probe here the CWND is reduced for a while to estimate RTT.
 
-BBR seems to do a lot better than CUBIC and is fair, so it’s been widely adopted. However, the reaction to capacity
-drops is slow. 
+BBR seems to perform a lot better than CUBIC with the benefit of being fair, so it has been widely adopted. However, the reaction to drops in network capacity is slow. 
 
 **Active Queue Management (AQM)**
-This methode requires control of the buffers which can be used to shape traffic. It can use Random Early Dropping (RED) where it discard packets evenly over diffrent flows to prevent congestion. 
-Controlled Delay (CoDel) Can be used determine if a queue consistently causes delays, and drop packets if so
+This method requires control of the buffers which can be used to shape traffic. It can use Random Early Dropping (RED) where it discards packets evenly over diffrent flows to prevent congestion. 
+Controlled Delay (CoDel) can be used determine if a queue consistently causes delays, and drop packets if so.
 
 **The ECN option**
-A option in the IP header that allow AQM-enabled routers might set the congestion flag in a packet, instead of dropping packets. So that the TCP endpoints learn of the congestion event. This has the benefit of avoiding retransmissions, and can reduce delay significantly for shorter-lived TCP flows
+A option in the IP header that allow AQM-enabled routers might set the congestion flag in a packet, instead of dropping packets. So that the TCP endpoints are notified of the congestion event. This has the benefit of avoiding retransmissions, and can reduce delay significantly for short-lived TCP flows.
