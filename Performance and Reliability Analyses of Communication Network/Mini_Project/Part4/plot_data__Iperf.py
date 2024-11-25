@@ -17,72 +17,75 @@
 
 import os
 import matplotlib.pyplot as plt
-
-TCP_types = ["cubic", "reno", "vegas"]
-for TCP_type in TCP_types:
-    # Path to the data
-    path = "Mini_Project//Part4//LOSS1_{0}".format(TCP_type)
-    # Get all the folders in the path
-    folders = os.listdir(path)
-    # Get the number of folders
-    num_folders = len(folders)
-    # Create a list to store the average bandwidth
-    avg_bandwidth = []
-    # Create a list to store the varience of the data
-    varience = []
-    # Loop through the folders
-    for folder in folders:
-        # Get the path to the folder
-        folder_path = os.path.join(path, folder)
-        # Get all the files in the folder
-        files = os.listdir(folder_path)
-        # Create a list to store the bandwidth
-        bandwidth = []
-        # Loop through the files
-        for file in files:
-            # Get the path to the file
-            file_path = os.path.join(folder_path, file)
+from collections import defaultdict
+import glob
+for i in range(0,2):
+    plt.figure()
+    TCP_types = ["cubic", "reno", "vegas"]
+    for TCP_type in TCP_types:
+        # Path to the data
+        path = "C:/P9/Exercises/Performance and Reliability Analyses of Communication Network/Mini_Project/Part4/data_22_11/LOSS{0}_{1}".format(i,TCP_type)
+        # Get all the folders in the path
+        folders = os.listdir(path)
+        # Get the number of folders
+        num_folders = len(folders)
+        # Create a list to store the average bandwidth
+        avg_bandwidth = []
+        # Create a list to store the varience of the data
+        varience = []
+        # Loop through the folders
+        for folder in folders:
+            # Get the path to the folder
+            folder_path = os.path.join(path, folder)
+            # Get all the files in the folder
+            files = glob.glob(folder_path + "/S*.txt")
+            # files = os.listdir(folder_path)
+            # print(files)
+            # Create a list to store the bandwidth
+            bandwidth = []
+            # Loop through the files
+            for file in files:
+                # Get the path to the file
+                # file_path = os.path.join(folder_path, file)
             # Open the file
-            with open(file_path, 'r') as f:
-                # Read the lines
-                lines = f.readlines()
-                # Loop through the lines
-                for line in lines:
-                    # Check if the line contains the bandwidth IN "Mbits/sec" OR "kbits/sec"
-                    if "Mbits/sec" in line:
-                        # Split the line
-                        parts = line.split()
-                        # Get the bandwidth
-                        bandwidth.append(float(parts[-2]))
-                    elif "kbits/sec" in line:
-                        # Split the line
-                        parts = line.split()
-                        # Get the bandwidth
-                        bandwidth.append(float(parts[-2])/1000)
-        # Calculate the average bandwidth
-        avg_bandwidth.append(sum(bandwidth)/len(bandwidth))
-        # Calculate the varience
-        varience.append(sum([(x - sum(bandwidth)/len(bandwidth))**2 for x in bandwidth])/len(bandwidth))
-    # Plot the data as a bar chart, with the different TCP_types next to each other, with error bars
-    bar_width = 0.25
-    index = range(1, num_folders + 1)
-    plt.bar([i + bar_width * TCP_types.index(TCP_type) for i in index], avg_bandwidth, bar_width, yerr=varience, label="TCP type: {0}".format(TCP_type))
-plt.xlabel("Number of Servers")
-plt.ylabel("Bandwidth Mbits/sec")
-plt.xticks([i + bar_width for i in index], index)
-plt.legend()
-plt.show()
-
-    
-    
-    
-#     plt.plot(range(1, num_folders+1), avg_bandwidth, label="Average Bandwidth, TCP type: {0}".format(TCP_type))
-#     plt.errorbar(range(1, num_folders+1), avg_bandwidth, yerr=varience, label="Varience, TCP type: {0}".format(TCP_type))
-# plt.xlabel("Number of Servers")
-# plt.ylabel("Bandwidth")
-# plt.legend()
-# plt.show()
+                with open(file, 'r') as f:
+                    # Read the lines
+                    lines = f.readlines()
+                    # Loop through the lines
+                    for line in lines:
+                        # Check if the line contains the bandwidth IN "Mbits/sec" OR "kbits/sec"
+                        if "Mbits/sec" in line:
+                            # Split the line
+                            parts = line.split()
+                            # Get the bandwidth
+                            bandwidth.append(float(parts[-2]))
+                        elif "kbits/sec" in line:
+                            # Split the line
+                            parts = line.split()
+                            # Get the bandwidth
+                            bandwidth.append(float(parts[-2])/1000)
+            # Calculate the average bandwidth
+            avg_bandwidth.append(sum(bandwidth)/len(bandwidth))
+            # Calculate the varience
+            varience.append(sum([(x - sum(bandwidth)/len(bandwidth))**2 for x in bandwidth])/len(bandwidth))
+        # Plot the data as a bar chart, with the different TCP_types next to each other, with error bars
+        bar_width = 0.25
+        index = range(1, num_folders + 1)
+        plt.bar([i + bar_width * TCP_types.index(TCP_type) for i in index], avg_bandwidth, bar_width, yerr=varience, label="TCP type: {0}".format(TCP_type))
+    plt.xlabel("Number of Servers")
+    plt.ylabel("avg. Bandwidth [Mbits/sec]")
+    plt.title("{0}% Loss ".format(i))
+    plt.xticks([i + bar_width for i in index], index)
+    plt.legend()
+    plt.savefig("Mini_Project/Part4/data_22_11/LOSS{0}_Bandwidth.png".format(i))
 
 
+#  Plot the CNWD
 
-
+for i in range(2):
+    for TCP_type in TCP_types:
+        for n in range(1,10):
+        # make a plot using the CNWD_Plotter python CNWD_Plotter.py -f data_22_11\LOSS0_vegas\4\TcpProbeData.txt -o TcpProbeData_0_4.png             
+        # Make a plot using the CNWD_Plotter
+            cmd_CNWD = f"python Mini_Project/Part4/CNWD_Plotter.py -f Mini_Project/Part4/data_22_11/LOSS{i}_{TCP_type}/{n}/TcpProbeData.txt -o Mini_Project/Part4/data_22_11/CNWD_plots/CNWD_LOSS{i}_{TCP_type}_n{n}.png -t {TCP_type}"
+            os.system(cmd_CNWD)
