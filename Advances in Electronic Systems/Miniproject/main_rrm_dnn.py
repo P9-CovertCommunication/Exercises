@@ -78,7 +78,7 @@ train_std = torch.std(torch.log(loc_val_tr))
 model_path = 'model.pth'
 
 # Evaluate model on new data
-results = evaluate_model_on_new_data(model_path, 1024,new_ch_gain, config, train_mean, train_std, target_rate)
+results = evaluate_model_on_new_data(model_path, 1024,new_ch_gain, config, train_mean, train_std, target_rate, N_low)
 
 # Print the results
 print("Predictions for new data:", results["predictions"])

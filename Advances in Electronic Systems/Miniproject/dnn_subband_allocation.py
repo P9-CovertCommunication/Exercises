@@ -51,14 +51,18 @@ def Loss(self, subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr
         print(f"subn_channel_index shape in Loss: {subn_channel_index.shape}")
 
     loss = 0
-    loss_func = nn.LeakyReLU(self.neg_slope).to(device)
-    #loss_func = nn.ReLU()
-    _, _, _, _, _, cap_tot_mean = capacity(subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr, power, device)  
+    #loss_func = nn.LeakyReLU(self.neg_slope).to(device)
+    #loss_func = nn.ReLU().to(device)
+    #loss_func = nn.GELU().to(device)
+    loss_func = nn.SiLU().to(device)
+    _, _, _, _, _, max_rate_mean, max_rate = capacity(subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr, power, device)  
     rate_thr = torch.tensor(rate_thr).to(device)
-    diff = (torch.subtract(rate_thr, cap_tot_mean))
+    #diff = (torch.subtract(rate_thr, max_rate_mean))
+    diff = (torch.subtract(rate_thr, max_rate))
     # print(diff < 0)
     loss = torch.div(loss_func(diff),rate_thr)   # evaluating the LReLU
-    loss = torch.sum(loss)
+
+    loss = torch.sum(torch.mean(loss,0))
 
     return loss
 
@@ -93,14 +97,13 @@ def capacity(subn_channel_index, chan, noise, chan_mean, chan_std, rate_thr, pow
     score_low_DNN = torch.sum((cap_tot[:, 0:N_low] > rate_thr[:, 0:N_low]), 1).float()  # Not Used
     score_high_DNN = torch.sum((cap_tot[:, N_low:] > rate_thr[:, N_low:]), 1).float()   # Not Used
     score_DNN = score_low_DNN.data + score_high_DNN.data  # .float()
-    max_sub_chan = torch.argmax(cap_val_matrix, -1).to(device)
     max_rates, max_subchannels = torch.max(cap_val_matrix, dim=-1)
-    max_rates_mean = torch.mean(max_rates,0).to(device)
+    max_rates_sum = torch.sum(torch.mean(max_rates,0)).to(device)
 
     cap = torch.mean(torch.sum(cap_tot, 1))
     
    
-    return cap, cap_tot, score_DNN, score_low_DNN, score_high_DNN, max_rates_mean
+    return cap, cap_tot, score_DNN, score_low_DNN, score_high_DNN, max_rates_sum, max_rates
 
 def generate_cdf(values, bins_, types):
     values = values.cpu().detach().numpy()
@@ -142,7 +145,7 @@ def DNN_model(loc_val_tr, loc_val_te, config, target_rate, max_power):
     test_dataset = ChanDataset(loc_val_te_norm)
     
     bs = 1024
-    epochs = 200
+    epochs = 1
     learningRate = 1e-5
     train_loader = DataLoader(train_dataset, batch_size=bs, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=bs, shuffle=False)
@@ -194,7 +197,33 @@ def DNN_model(loc_val_tr, loc_val_te, config, target_rate, max_power):
         torch.save(net.state_dict(), f'model.pth')
     return net
 
-def evaluate_model_on_new_data(model_path, hidden_dim, new_data, config, train_mean, train_std, target_rate):
+def eval_capacity(subn_channel_index, chan, noise, chan_mean, chan_std, rate_thr, power, device, N_low):
+    N = chan.size(1)
+
+    cap_tot = torch.zeros((chan.size(0), N,), dtype=torch.float32).to(device)
+    channel = torch.exp(chan * chan_std + chan_mean)
+    tr_power = power * torch.ones(channel.size(0), channel.size(1), channel.size(1))
+    tr_power = torch.transpose(tr_power, 1, 2)
+    for k in range(subn_channel_index.shape[-1]):
+        mask = subn_channel_index[:, :, k].unsqueeze(-1).expand(channel.size(0), channel.size(1),
+                                                                channel.size(1)) * torch.transpose(
+            subn_channel_index[:, :, k].unsqueeze(-1).expand(channel.size(0), channel.size(1), channel.size(1)), 1, 2)
+        tot_ch = tr_power.to(device) * torch.mul(channel.to(device), mask.to(device)).to(device)
+        sig_ch = torch.diagonal(tot_ch, dim1=1, dim2=2)
+        inter_ch = tot_ch - torch.diag_embed(sig_ch)
+        inter_vec = torch.sum(inter_ch, -1)
+        SINR_val = torch.div(sig_ch, (inter_vec + noise))
+        cap_val = torch.log2(1.0 + SINR_val)
+        cap_tot += cap_val.to(device)
+    rate_thr = torch.tensor(rate_thr).expand(cap_tot.size(0), cap_tot.size(1)).float()
+    score_low_DNN = torch.sum((cap_tot[:, 0:N_low] > rate_thr[:, 0:N_low]), 1).float()  # weights[:,0:N_low] *
+    score_high_DNN = torch.sum((cap_tot[:, N_low:] > rate_thr[:, N_low:]), 1).float()  # weights[:,N_low:N_high] *
+    score_DNN = score_low_DNN.data + score_high_DNN.data  # .float()
+
+    cap = torch.mean(torch.sum(cap_tot, 1))
+    return cap, cap_tot, score_DNN, score_low_DNN, score_high_DNN
+
+def evaluate_model_on_new_data(model_path, hidden_dim, new_data, config, train_mean, train_std, target_rate, N_low):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     net = Net(config.num_of_subnetworks, config.n_subchannel, hidden_dim, 4, 0.01).to(device)
     net.load_state_dict(torch.load(model_path, map_location=device))
@@ -220,11 +249,15 @@ def evaluate_model_on_new_data(model_path, hidden_dim, new_data, config, train_m
     #power = config.max_power * torch.ones(new_data.shape[0], config.num_of_subnetworks).to(device)
     power = config.max_power
     dl_sel_dec = F.one_hot(tensor_results, num_classes=config.n_subchannel).float().to(device)
-    _, cap_dl_new, score_new, score_low_new, score_high_new, cap_tot_new_mean = capacity(dl_sel_dec, torch.Tensor(new_data_norm).to(device),
-                                                                        config.noise_power, train_mean, train_std,
-                                                                        torch.tensor(target_rate).to(device), power, device
+    #_, cap_dl_new, score_new, score_low_new, score_high_new, cap_tot_new_mean = capacity(dl_sel_dec, torch.Tensor(new_data_norm).to(device),
+    #                                                                     config.noise_power, train_mean, train_std,
+    #                                                                     torch.tensor(target_rate).to(device), power, device
+    # )
+    _, cap_dl_new, score_new, score_low_new, score_high_new = eval_capacity(
+        dl_sel_dec, torch.Tensor(new_data_norm).to(device), config.noise_power,
+        train_mean, train_std, torch.tensor(target_rate).to(device), power, device, N_low
     )
-   
+
 
     return {
         "predictions": results,
