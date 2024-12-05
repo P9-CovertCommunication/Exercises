@@ -42,6 +42,7 @@ plt.close('all')
 limited_CSI = 0
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+#device = 'cpu'
 num_subn = 20
 N_low = int(num_subn*1/2)
 N_high = int(num_subn*1/2)
@@ -64,7 +65,7 @@ loc_val_te = ch_coef[tot_sample_tr:tot_sample_tr+snapshots,:,:]
 
 # Train model
 
-DNN_model(loc_val_tr, loc_val_te, config, target_rate, config.max_power)
+DNN_model(loc_val_tr, loc_val_te, config, target_rate, config.max_power, N_low,device)
 
 
 
@@ -78,7 +79,7 @@ train_std = torch.std(torch.log(loc_val_tr))
 model_path = 'model.pth'
 
 # Evaluate model on new data
-results = evaluate_model_on_new_data(model_path, 1024,new_ch_gain, config, train_mean, train_std, target_rate, N_low)
+results = evaluate_model_on_new_data(model_path, 1024,new_ch_gain, config, train_mean, train_std, target_rate, N_low,device)
 
 # Print the results
 print("Predictions for new data:", results["predictions"])
