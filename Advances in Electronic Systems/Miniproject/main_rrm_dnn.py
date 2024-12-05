@@ -7,7 +7,7 @@ import static_subnetwork_generator
 # from resourcemanager_2d import ResourceAllocator
 from tqdm import tqdm
 from dnn_subband_allocation import DNN_model, evaluate_model_on_new_data
-
+import torch
 
 class init_parameters:
     def __init__(self,rng, num_of_subn, target_rate):
@@ -40,17 +40,25 @@ plt.close('all')
 
 
 limited_CSI = 0
-snapshots = int(1 * 64)
-tot_sample_tr = int((5 * 64)-snapshots)
+
+
 num_subn = 20
 N_low = int(num_subn*1/2)
 N_high = int(num_subn*1/2)
-target_rate = np.squeeze(np.concatenate((0.4*np.ones((1,N_low)), 8*np.ones((1,N_high))), axis=1))
+target_rate = torch.tensor(np.squeeze(np.concatenate((0.4*np.ones((1,N_low)), 8*np.ones((1,N_high))), axis=1)))
+
 config = init_parameters(0, num_subn, target_rate)
 
 # print('#### Generating subnetwork ####')
-ch_coef = static_subnetwork_generator.generate_static_samples(config, tot_sample_tr + snapshots)
 
+#ch_coef = static_subnetwork_generator.generate_static_samples(config, 10)
+
+ch_coef = np.load('Channel_matrix_gain.npy')
+ch_coef = ch_coef[:,0,:,:] # reduce the dimension of the channel matrix, only using one subchannel gain maritrix
+ch_coef = torch.from_numpy(ch_coef).float()
+tot_sample_faktor = 0.8
+snapshots = int(ch_coef.shape[0]*(1-tot_sample_faktor))
+tot_sample_tr = int(ch_coef.shape[0]-snapshots)
 loc_val_tr = ch_coef[0:tot_sample_tr,:,:]
 loc_val_te = ch_coef[tot_sample_tr:tot_sample_tr+snapshots,:,:]
 
@@ -70,9 +78,8 @@ train_std = np.std(np.log(loc_val_tr))
 # Load the trained model
 model_path = 'model.pth'
 
-
 # Evaluate model on new data
-results = evaluate_model_on_new_data(model_path, new_ch_gain, config, train_mean, train_std, target_rate)
+results = evaluate_model_on_new_data(model_path, 1000,new_ch_gain, config, train_mean, train_std, target_rate)
 
 # Print the results
 print("Predictions for new data:", results["predictions"])
