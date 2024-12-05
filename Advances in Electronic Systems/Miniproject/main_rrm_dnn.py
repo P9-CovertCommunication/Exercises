@@ -41,7 +41,7 @@ plt.close('all')
 
 limited_CSI = 0
 
-
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 num_subn = 20
 N_low = int(num_subn*1/2)
 N_high = int(num_subn*1/2)
@@ -55,7 +55,7 @@ config = init_parameters(0, num_subn, target_rate)
 
 ch_coef = np.load('Channel_matrix_gain.npy')
 ch_coef = ch_coef[:,0,:,:] # reduce the dimension of the channel matrix, only using one subchannel gain maritrix
-ch_coef = torch.from_numpy(ch_coef).float()
+ch_coef = torch.from_numpy(ch_coef).float().to(device)
 tot_sample_faktor = 0.8
 snapshots = int(ch_coef.shape[0]*(1-tot_sample_faktor))
 tot_sample_tr = int(ch_coef.shape[0]-snapshots)
@@ -70,16 +70,15 @@ DNN_model(loc_val_tr, loc_val_te, config, target_rate, config.max_power)
 
 ## Evaluation set
 new_snapshots = 64
-new_ch_gain = static_subnetwork_generator.generate_static_samples(config, new_snapshots)
-
-train_mean = np.mean(np.log(loc_val_tr))
-train_std = np.std(np.log(loc_val_tr))
+new_ch_gain = torch.tensor(static_subnetwork_generator.generate_static_samples(config, new_snapshots),device=device).float()
+train_mean = torch.mean(torch.log(loc_val_tr))
+train_std = torch.std(torch.log(loc_val_tr))
 
 # Load the trained model
 model_path = 'model.pth'
 
 # Evaluate model on new data
-results = evaluate_model_on_new_data(model_path, 1000,new_ch_gain, config, train_mean, train_std, target_rate)
+results = evaluate_model_on_new_data(model_path, 1024,new_ch_gain, config, train_mean, train_std, target_rate)
 
 # Print the results
 print("Predictions for new data:", results["predictions"])

@@ -198,7 +198,7 @@ def evaluate_model_on_new_data(model_path, hidden_dim, new_data, config, train_m
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     net = Net(config.num_of_subnetworks, config.n_subchannel, hidden_dim, 4, 0.01).to(device)
     net.load_state_dict(torch.load(model_path, map_location=device))
-    new_data_db = np.log(new_data)
+    new_data_db = torch.log(new_data)
     new_data_norm = (new_data_db - train_mean) / train_std
 
     new_data_dataset = ChanDataset(new_data_norm)
@@ -212,9 +212,9 @@ def evaluate_model_on_new_data(model_path, hidden_dim, new_data, config, train_m
             output = net(batch)
             output_flat = output.view(-1, config.num_of_subnetworks, config.n_subchannel)
             output_decision = torch.argmax(output_flat, dim=-1)  # Get the sub-band allocation decisions
-            results.append(output_decision.device().numpy())
+            results.append(output_decision)
 
-    results = np.concatenate(results, axis=0)
+    results = torch.concatenate(results, axis=0)
     tensor_results = torch.tensor(results)
 
     #power = config.max_power * torch.ones(new_data.shape[0], config.num_of_subnetworks).to(device)
