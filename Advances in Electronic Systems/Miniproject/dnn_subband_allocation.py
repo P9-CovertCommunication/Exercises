@@ -11,11 +11,56 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+import wandb
+import static_subnetwork_generator
 
 torch.set_printoptions(precision=4)
 np.set_printoptions(precision=4)
 
 logging = False  # Set this flag to True to enable logging
+
+sweep_configuration = {
+    "name": "Advance in electronic system",
+    "method": "grid",
+    "metric": {"goal": "minimize", "name": "test_loss"},
+    "parameters": {
+        "batch_size": {"values": [1024/2, 1024, 1024*2]},#[16, 32, 64]},
+        "epochs": {"values": [100]},#[20, 50, 100, 150]},
+        "dropout_p":{'values': [0, 0.1, 0.3, 0.4]},#[0, 0.2, 0.5]},
+        "learning_rate": {'values' : [1e-7, 1e-6, 1e-5]},
+        "loss_func" : {'values': [0,1,2,3,4]},
+        "normalize" : {'values': [True, False]},
+        "optimizer": {"values": ["adam"]},
+    },
+}
+
+class init_parameters:
+    def __init__(self,rng, num_of_subn, target_rate):
+        self.num_of_subnetworks = num_of_subn
+        self.target_rate = target_rate
+        self.n_subchannel = 4
+        self.deploy_length = 20                                 # the length and breadth of the factory area (m)
+        self.subnet_radius = 1                                  # the radius of the subnetwork cell (m)
+        self.minD = 0.8                                         # minimum distance from device to controller(access point) (m)
+        self.minDistance = 2 * self.subnet_radius               # minimum controller to controller distance (m)
+        self.rng_value = np.random.RandomState(rng)
+        self.bandwidth = 100e6                                    # bandwidth (Hz)
+        self.ch_bandwidth = self.bandwidth / self.n_subchannel
+        self.fc = 1e10                                          # Carrier frequency (Hz)
+        self.lambdA = 3e8/self.fc
+        # self.plExponent = 3                                   # path loss exponent
+        self.clutType = 'dense'                                 # Type of clutter (sparse or dense)
+        self.clutSize = 2.0                                     # Clutter element size [m]
+        self.clutDens = 0.6                                     # Clutter density [%]
+        self.shadStd = 7.2                                      # Shadowing std (NLoS)
+        self.max_power = 1
+        self.no_dbm = -174
+        self.noise_figure_db = 5
+        self.noise_power = 10 ** ((self.no_dbm + self.noise_figure_db + 10 * np.log10(self.ch_bandwidth)) / 10)
+        self.mapXPoints = np.linspace(0, self.deploy_length, num=401, endpoint=True)
+        self.mapYPoints = np.linspace(0, self.deploy_length, num=401, endpoint=True)
+        self.correlationDistance = 5
+
 
 class Net(nn.Module):
     def __init__(self, num_sub, num_chan, hidden_dim, num_l, temperature, neg_slope = 0.001, dropout = 0.1):
@@ -46,14 +91,13 @@ class Net(nn.Module):
         
         return out_RA
 
-def Loss(self, subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr, power, device, N_low):
+def Loss(self, subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr, power, device, N_low, func_idx):
     loss = 0
-    #loss_func = nn.Sigmoid().to(device)
-    #loss_func = nn.LeakyReLU(self.neg_slope).to(device)
-    loss_func = nn.ReLU().to(device)
-    #loss_func = nn.GELU().to(device)
-    #loss_func = nn.SiLU().to(device)
-    _, _, _, _, _, max_rates_sum, max_rate = capacity(subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr, power, device, N_low)
+    loss_functions = [nn.ReLU(), nn.LeakyReLU(self.neg_slope), nn.SiLU()]
+
+    loss_func = loss_functions[func_idx].to(device)
+    
+    _, _, _, score_low, score_high, max_rates_sum, max_rate = capacity(subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr, power, device, N_low)
     #diff = (torch.subtract(rate_thr, max_rate_mean))
     diff = (torch.subtract(rate_thr, max_rate))
     # print(diff < 0)
@@ -61,7 +105,7 @@ def Loss(self, subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr
     loss = loss_func(diff)   # evaluating the LReLU
     loss = torch.sum(torch.mean(loss,0))
 
-    return loss
+    return loss, score_low, score_high
 
 def capacity(subn_channel_index, chan, noise, chan_mean, chan_std, rate_thr, power, device, N_low):
 
@@ -101,7 +145,7 @@ def capacity(subn_channel_index, chan, noise, chan_mean, chan_std, rate_thr, pow
    
     return cap, cap_tot, score_DNN, score_low_DNN, score_high_DNN, max_rates_sum, max_rates
 
-def generate_cdf(values, bins_, types):
+def generate_cdf(values, bins_, types=None):
     values = values.cpu().detach().numpy()
     if types == 's':
         values = np.sum(values, 1)
@@ -123,66 +167,77 @@ class ChanDataset(Dataset):
         x = torch.tensor(self.data[idx],device='cpu')
         return x  # Return the input tensor as both input and output
 
-def DNN_model(loc_val_tr, loc_val_te, config, target_rate, max_power, N_low,device):
+def DNN_model(wandb_config = None):
+    with wandb.init(config=wandb_config):
+        conf = wandb.config
+        net = Net(config.num_of_subnetworks, config.n_subchannel, 1024, 4, 0.01, 0.001, conf.dropout_p).to(device)
 
-    net = Net(config.num_of_subnetworks, config.n_subchannel, 1024, 4, 0.01).to(device)
+        loc_val_tr_db = torch.log(loc_val_tr).to(device) #We use natural log as this was implemented in the capacity method
+        loc_val_te_db = torch.log(loc_val_te).to(device)
+        
+        train_mean = torch.mean(loc_val_tr_db).to(device)
+        train_std = torch.std(loc_val_tr_db).to(device)
+        
+        loc_val_tr_norm = torch.div((loc_val_tr_db - train_mean), train_std).to(device)
+        loc_val_te_norm = torch.div((loc_val_te_db - train_mean), train_std).to(device)
+        
+        #Create dataset and dataloader
+        train_dataset = ChanDataset(loc_val_tr_norm)
+        test_dataset = ChanDataset(loc_val_te_norm)
+        
+        bs = conf.batch_size
+        epochs = conf.epochs
+        learningRate = conf.learning_rate
+        train_loader = DataLoader(train_dataset, batch_size=bs, shuffle=False)
+        test_loader = DataLoader(test_dataset, batch_size=bs, shuffle=False)
+        
+        optimizer = optim.Adam(net.parameters(), lr=learningRate)
+        softmax = nn.Softmax(dim=-1).to(device)
+        sigmoid = nn.Sigmoid()
+        temperatures = torch.linspace(1 , 0.01, epochs, device=device)
 
-    loc_val_tr_db = torch.log(loc_val_tr).to(device) #We use natural log as this was implemented in the capacity method
-    loc_val_te_db = torch.log(loc_val_te).to(device)
-    
-    train_mean = torch.mean(loc_val_tr_db).to(device)
-    train_std = torch.std(loc_val_tr_db).to(device)
-    
-    loc_val_tr_norm = torch.div((loc_val_tr_db - train_mean), train_std).to(device)
-    loc_val_te_norm = torch.div((loc_val_te_db - train_mean), train_std).to(device)
-    
-    #Create dataset and dataloader
-    train_dataset = ChanDataset(loc_val_tr_norm)
-    test_dataset = ChanDataset(loc_val_te_norm)
-    
-    bs = 1024
-    epochs = 20
-    learningRate = 1e-6
-    train_loader = DataLoader(train_dataset, batch_size=bs, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=bs, shuffle=False)
-    
-    optimizer = optim.Adam(net.parameters(), lr=learningRate)
-    softmax = nn.Softmax(dim=-1).to(device)
-    sigmoid = nn.Sigmoid()
-    tempretures = torch.linspace(1 , 0.01, epochs, device=device)
-
-    for epoch in tqdm(range(epochs)):
-        running_loss = 0.0
-        net.train()
-        for batch in train_loader:
-
-            batch = batch.to(device)
-            optimizer.zero_grad()
-            output = net(batch)
-            output_flat = output.view(-1, config.num_of_subnetworks, config.n_subchannel)
-            #delta_sharpness =  1-nn.functional.sigmoid(torch.tensor(-3+(torch.mul(5,torch.div(epoch,epochs)))))
-            output = softmax(torch.div(output_flat,tempretures[epoch]))
-            
-            loss = Loss(net, output, batch, config.noise_power, train_mean, train_std, target_rate, max_power, device, N_low)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-            
-        print(f"Epoch {epoch}, Loss: {running_loss}")
-                        
-        net.eval()
-        test_loss = 0.0
-        with torch.no_grad():
-            for batch in test_loader:
+        for epoch in tqdm(range(epochs)):
+            running_loss = 0.0
+            net.train()
+            for batch in train_loader:
 
                 batch = batch.to(device)
+                optimizer.zero_grad()
                 output = net(batch)
                 output_flat = output.view(-1, config.num_of_subnetworks, config.n_subchannel)
-                loss = Loss(net, output_flat, batch, config.noise_power, train_mean, train_std, target_rate, max_power, device, N_low)
-                test_loss += loss.item()
-    
-        torch.save(net.state_dict(), f'model.pth')
-    return net
+                #delta_sharpness =  1-nn.functional.sigmoid(torch.tensor(-3+(torch.mul(5,torch.div(epoch,epochs)))))
+                output = softmax(torch.div(output_flat,temperatures[epoch]))
+                
+                loss, _, _= Loss(net, output, batch, config.noise_power, train_mean, train_std, target_rate, config.max_power, device, N_low)
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item()
+            wandb.log({'train_loss': running_loss, 'epoch': epoch})
+            # print(f"Epoch {epoch}, Loss: {running_loss}")
+                            
+            net.eval()
+            test_loss = 0.0
+            score_low_list = []
+            score_high_list = []
+            
+            with torch.no_grad():
+                for batch in test_loader:
+
+                    batch = batch.to(device)
+                    output = net(batch)
+                    output_flat = output.view(-1, config.num_of_subnetworks, config.n_subchannel)
+                    loss, score_low, score_high = Loss(net, output_flat, batch, config.noise_power, train_mean, train_std, target_rate, config.max_power, device, N_low, conf.loss_func)
+                    score_low_list.append(score_low)
+                    score_high_list.append(score_high)
+                    test_loss += loss.item()
+            
+            wandb.log({'test_loss': test_loss,
+                        'epoch': epoch,
+                        'score_low' : torch.mean(torch.cat(score_low_list,dim=0)),
+                        'score_high' : torch.mean(torch.cat(score_high_list,dim=0))})
+
+            torch.save(net.state_dict(), f'model.pth')
+
 
 def evaluate_model_on_new_data(model_path, hidden_dim, new_data, config, train_mean, train_std, target_rate, N_low,device):
     net = Net(config.num_of_subnetworks, config.n_subchannel, hidden_dim, 4, 0.01).to(device)
@@ -215,7 +270,8 @@ def evaluate_model_on_new_data(model_path, hidden_dim, new_data, config, train_m
         train_mean, train_std, torch.tensor(target_rate).to(device), power, device, N_low
     )
 
-
+    bins_low, low_cdf = generate_cdf(score_low_new, N_low)
+    bins_high, high_cdf = generate_cdf(score_high_new, N_low)
     return {
         "predictions": results,
         "capacity": max_rates_sum,
@@ -225,6 +281,84 @@ def evaluate_model_on_new_data(model_path, hidden_dim, new_data, config, train_m
         "low_load mean capacity" : torch.mean(torch.mean(max_rates,0)[:N_low]).to(device),
         "high_load_score": score_high_new.mean().item(),
         "High mean subnet capacities": torch.mean(max_rates,0)[N_low:].to(device),
-        "high_load mean capacity" : torch.mean(torch.mean(max_rates,0)[N_low:]).to(device)
-
+        "high_load mean capacity" : torch.mean(torch.mean(max_rates,0)[N_low:]).to(device),
+        "low_cdf" : low_cdf,
+        "high_cdf": high_cdf,
+        "low_bins": bins_low,
+        "high_bins" : bins_high
     }
+
+if __name__ == '__main__':
+    limited_CSI = 0
+
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    #device = 'cpu'
+    num_subn = 20
+    N_low = int(num_subn*1/2)
+    N_high = int(num_subn*1/2)
+    target_rate = torch.tensor(np.squeeze(np.concatenate((0.4*np.ones((1,N_low)), 8*np.ones((1,N_high))), axis=1)),device=device)
+
+    config = init_parameters(0, num_subn, target_rate)
+
+    # print('#### Generating subnetwork ####')
+
+    #ch_coef = static_subnetwork_generator.generate_static_samples(config, 10)
+
+    ch_coef = np.load('Channel_matrix_gain.npy')
+    ch_coef = ch_coef[:,0,:,:] # reduce the dimension of the channel matrix, only using one subchannel gain maritrix
+    ch_coef = torch.from_numpy(ch_coef).float().to(device)
+    
+
+
+    tot_sample_faktor = 0.8
+    test_size = 10000
+    snapshots = 10000
+    tot_sample_tr = int(ch_coef.shape[0]-snapshots-test_size)
+    loc_val_tr = ch_coef[0:tot_sample_tr,:,:]
+    loc_val_te = ch_coef[tot_sample_tr:tot_sample_tr+snapshots,:,:]
+    loc_val_test = ch_coef[tot_sample_tr+snapshots:]
+
+    # Train model
+    sweep_id = wandb.sweep(sweep=sweep_configuration, project="Advance in electronic system")
+    wandb.agent(sweep_id, DNN_model)
+    # DNN_model(loc_val_tr, loc_val_te, config, target_rate, config.max_power, N_low,device)
+
+
+
+    # ## Evaluation set
+    # new_snapshots = 10000
+    # # new_ch_gain = torch.tensor(static_subnetwork_generator.generate_static_samples(config, new_snapshots),device=device).float()
+    # train_mean = torch.mean(torch.log(loc_val_tr))
+    # train_std = torch.std(torch.log(loc_val_tr))
+
+    # # Load the trained model
+    # #model_path = 'model.pth'
+    # model_path = 'model_learningRate_e-6.pth'
+
+    # # Evaluate model on new data
+    # results = evaluate_model_on_new_data(model_path, 1024, loc_val_test, config, train_mean, train_std, target_rate, N_low,device)
+
+
+    # # Print the results
+    # print("Predictions for new data:", results["predictions"])
+    # print(f"New data capacity: {results['capacity']}")
+    # print(f"New data DNN Score: {results['score']}")
+    # print("---------------------------------------------------------------------------")
+    # print(f"Low-load Score: {results['low_load_score']}")
+    # print(f"Low-load mean subnet capacities: {results['low mean subnet capacities']}")
+    # print(f"low_load mean capacity : {results['low_load mean capacity']}")
+    # print("---------------------------------------------------------------------------")
+    # print(f"High-load Score: {results['high_load_score']}")
+    # print(f"High-load mean subnet capacities: {results['High mean subnet capacities']}")
+    # print(f"high_load mean capacity : {results['high_load mean capacity']}")
+
+    # plt.figure("High rate cdf")
+    # plt.plot(results['high_bins'], results["high_cdf"])
+    # plt.grid(True,zorder=2)
+
+    # plt.figure("Low rate cdf")
+    # plt.plot(results['low_bins'], results["low_cdf"])
+    # plt.grid(True,zorder=2)
+
+    # plt.show()
+

@@ -6,8 +6,27 @@ import static_subnetwork_generator
 # import DNN_subbandd
 # from resourcemanager_2d import ResourceAllocator
 from tqdm import tqdm
-from dnn_subband_allocation import DNN_model, evaluate_model_on_new_data
+from dnn_subband_allocation import DNN_model, evaluate_model_on_new_data, generate_cdf
 import torch
+# import torch.nn as nn
+import wandb
+
+sweep_configuration = {
+    "name": "Advance in electronic system",
+    "method": "grid",
+    "metric": {"goal": "minimize", "name": "val_loss"},
+    "parameters": {
+        "learning_rate": {'values':[0.] },#list(np.linspace(0.0005,0.005,5))},
+        "batch_size": {"values": [1024/2, 1024, 1024*2]},#[16, 32, 64]},
+        "epochs": {"values": [100]},#[20, 50, 100, 150]},
+        "dropout_p":{'values': [0, 0.1, 0.3, 0.4]},#[0, 0.2, 0.5]},
+        "learning_rate": {'values' : [1e-7, 1e-6, 1e-5]},
+        "loss_func" : {'values': [0,1,2,3,4]},
+        "normalize" : {'values': [True, False]},
+        "optimizer": {"values": ["adam"]},
+    },
+}
+
 
 class init_parameters:
     def __init__(self,rng, num_of_subn, target_rate):
@@ -64,22 +83,24 @@ loc_val_tr = ch_coef[0:tot_sample_tr,:,:]
 loc_val_te = ch_coef[tot_sample_tr:tot_sample_tr+snapshots,:,:]
 
 # Train model
-
-#DNN_model(loc_val_tr, loc_val_te, config, target_rate, config.max_power, N_low,device)
+sweep_id = wandb.sweep(sweep=sweep_configuration, project="Advance in electronic system")
+DNN_model(loc_val_tr, loc_val_te, config, target_rate, config.max_power, N_low,device)
 
 
 
 ## Evaluation set
-new_snapshots = 256
+new_snapshots = 10000
 new_ch_gain = torch.tensor(static_subnetwork_generator.generate_static_samples(config, new_snapshots),device=device).float()
 train_mean = torch.mean(torch.log(loc_val_tr))
 train_std = torch.std(torch.log(loc_val_tr))
 
 # Load the trained model
-model_path = 'model.pth'
+#model_path = 'model.pth'
+model_path = 'model_learningRate_e-6.pth'
 
 # Evaluate model on new data
 results = evaluate_model_on_new_data(model_path, 1024,new_ch_gain, config, train_mean, train_std, target_rate, N_low,device)
+
 
 # Print the results
 print("Predictions for new data:", results["predictions"])
@@ -93,4 +114,14 @@ print("-------------------------------------------------------------------------
 print(f"High-load Score: {results['high_load_score']}")
 print(f"High-load mean subnet capacities: {results['High mean subnet capacities']}")
 print(f"high_load mean capacity : {results['high_load mean capacity']}")
+
+plt.figure("High rate cdf")
+plt.plot(results['high_bins'], results["high_cdf"])
+plt.grid(True,zorder=2)
+
+plt.figure("Low rate cdf")
+plt.plot(results['low_bins'], results["low_cdf"])
+plt.grid(True,zorder=2)
+
+plt.show()
 
