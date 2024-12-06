@@ -48,18 +48,17 @@ class Net(nn.Module):
 
 def Loss(self, subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr, power, device, N_low):
     loss = 0
-    loss_func = nn.Sigmoid().to(device)
-    # loss_func = nn.LeakyReLU(self.neg_slope).to(device)
-    #loss_func = nn.ReLU().to(device)
+    #loss_func = nn.Sigmoid().to(device)
+    #loss_func = nn.LeakyReLU(self.neg_slope).to(device)
+    loss_func = nn.ReLU().to(device)
     #loss_func = nn.GELU().to(device)
     #loss_func = nn.SiLU().to(device)
-    _, _, _, _, _, max_rates_sum, max_rate = capacity(subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr, power, device, N_low)  
-    rate_thr = torch.tensor(rate_thr).to(device)
+    _, _, _, _, _, max_rates_sum, max_rate = capacity(subn_channel_index, channel, noise, chan_mean, chan_std, rate_thr, power, device, N_low)
     #diff = (torch.subtract(rate_thr, max_rate_mean))
     diff = (torch.subtract(rate_thr, max_rate))
     # print(diff < 0)
-    loss = torch.div(loss_func(diff+4),rate_thr)   # evaluating the LReLU
-
+    #loss = torch.div(loss_func(diff),rate_thr)   # evaluating the LReLU
+    loss = loss_func(diff)   # evaluating the LReLU
     loss = torch.sum(torch.mean(loss,0))
 
     return loss
@@ -76,24 +75,23 @@ def capacity(subn_channel_index, chan, noise, chan_mean, chan_std, rate_thr, pow
     cap_val_matrix = torch.zeros((chan.size(0), N,subn_channel_index.shape[-1]), dtype=torch.float32).to(device)
     
     for k in range(subn_channel_index.shape[-1]):
-        mask = subn_channel_index[:, :, k].unsqueeze(-1).expand(channel.size(0), channel.size(1),
+        mask =  subn_channel_index[:, :, k].unsqueeze(-1).expand(channel.size(0), channel.size(1),
                                                                 channel.size(1)) * torch.transpose(
-            subn_channel_index[:, :, k].unsqueeze(-1).expand(channel.size(0), channel.size(1), channel.size(1)), 1, 2)
+                subn_channel_index[:, :, k].unsqueeze(-1).expand(channel.size(0), channel.size(1), channel.size(1)), 1, 2)
         tot_ch = tr_power.to(device) * torch.mul(channel.to(device), mask.to(device)).to(device)
         sig_ch = torch.diagonal(tot_ch, dim1=1, dim2=2).to(device)
         inter_ch = tot_ch - torch.diag_embed(sig_ch).to(device)
         inter_vec = torch.sum(inter_ch, -1).to(device)
-
         SINR_val = torch.div(sig_ch, (inter_vec + noise)).to(device)   # Signal to Interference and Noise
+        
         cap_val = torch.log2(1.0 + SINR_val)                # spectral efficiency
-        cap_tot += cap_val.to(device)
         cap_val_matrix[:, :, k] = cap_val
-    rate_thr = torch.tensor(rate_thr).expand(cap_tot.size(0), cap_tot.size(1)).float().to(device)
 
-    score_low_DNN = torch.sum((cap_tot[:, 0:N_low] > rate_thr[:, 0:N_low]), 1).float()  # Not Used
-    score_high_DNN = torch.sum((cap_tot[:, N_low:] > rate_thr[:, N_low:]), 1).float()   # Not Used
-    score_DNN = score_low_DNN.data + score_high_DNN.data  # .float()
+    rate_thr = torch.tensor(rate_thr).expand(cap_tot.size(0), cap_tot.size(1)).float().to(device)
     max_rates, max_subchannels = torch.max(cap_val_matrix, dim=-1)
+    score_low_DNN = torch.sum((max_rates[:, 0:N_low] > rate_thr[:, 0:N_low]), 1).float()  # Not Used
+    score_high_DNN = torch.sum((max_rates[:, N_low:] > rate_thr[:, N_low:]), 1).float()   # Not Used
+    score_DNN = score_low_DNN.data + score_high_DNN.data  # .float()
 
     max_rates_mean = torch.mean(max_rates,0).to(device)
     max_rates_sum = torch.sum(max_rates_mean).to(device)
@@ -143,28 +141,29 @@ def DNN_model(loc_val_tr, loc_val_te, config, target_rate, max_power, N_low,devi
     test_dataset = ChanDataset(loc_val_te_norm)
     
     bs = 1024
-    epochs = 30
-    learningRate = 1e-5
+    epochs = 20
+    learningRate = 1e-6
     train_loader = DataLoader(train_dataset, batch_size=bs, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=bs, shuffle=False)
     
     optimizer = optim.Adam(net.parameters(), lr=learningRate)
     softmax = nn.Softmax(dim=-1).to(device)
     sigmoid = nn.Sigmoid()
+    tempretures = torch.linspace(1 , 0.01, epochs, device=device)
+
     for epoch in tqdm(range(epochs)):
         running_loss = 0.0
         net.train()
-        
         for batch in train_loader:
 
             batch = batch.to(device)
             optimizer.zero_grad()
             output = net(batch)
             output_flat = output.view(-1, config.num_of_subnetworks, config.n_subchannel)
-            delta_sharpness =  1-nn.functional.sigmoid(torch.tensor(-3+(torch.mul(5,torch.div(epoch,epochs)))))
-            output = softmax(torch.div(output_flat,delta_sharpness))
+            #delta_sharpness =  1-nn.functional.sigmoid(torch.tensor(-3+(torch.mul(5,torch.div(epoch,epochs)))))
+            output = softmax(torch.div(output_flat,tempretures[epoch]))
             
-            loss = Loss(net, output, batch, config.noise_power, train_mean, train_std, torch.tensor(target_rate), max_power, device, N_low)
+            loss = Loss(net, output, batch, config.noise_power, train_mean, train_std, target_rate, max_power, device, N_low)
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
@@ -211,7 +210,7 @@ def evaluate_model_on_new_data(model_path, hidden_dim, new_data, config, train_m
     power = config.max_power
     dl_sel_dec = F.one_hot(tensor_results, num_classes=config.n_subchannel).float().to(device)
   
-    _, cap_dl_new, score_new, score_low_new, score_high_new, max_rates_sum, _ = capacity(
+    _, cap_dl_new, score_new, score_low_new, score_high_new, max_rates_sum, max_rates = capacity(
         dl_sel_dec, torch.Tensor(new_data_norm).to(device), config.noise_power,
         train_mean, train_std, torch.tensor(target_rate).to(device), power, device, N_low
     )
@@ -222,5 +221,10 @@ def evaluate_model_on_new_data(model_path, hidden_dim, new_data, config, train_m
         "capacity": max_rates_sum,
         "score": score_new.mean().item(),
         "low_load_score": score_low_new.mean().item(),
-        "high_load_score": score_high_new.mean().item()
+        "low mean subnet capacities": torch.mean(max_rates,0)[:N_low].to(device),
+        "low_load mean capacity" : torch.mean(torch.mean(max_rates,0)[:N_low]).to(device),
+        "high_load_score": score_high_new.mean().item(),
+        "High mean subnet capacities": torch.mean(max_rates,0)[N_low:].to(device),
+        "high_load mean capacity" : torch.mean(torch.mean(max_rates,0)[N_low:]).to(device)
+
     }

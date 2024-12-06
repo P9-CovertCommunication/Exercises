@@ -46,7 +46,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 num_subn = 20
 N_low = int(num_subn*1/2)
 N_high = int(num_subn*1/2)
-target_rate = torch.tensor(np.squeeze(np.concatenate((0.4*np.ones((1,N_low)), 8*np.ones((1,N_high))), axis=1)))
+target_rate = torch.tensor(np.squeeze(np.concatenate((0.4*np.ones((1,N_low)), 8*np.ones((1,N_high))), axis=1)),device=device)
 
 config = init_parameters(0, num_subn, target_rate)
 
@@ -65,12 +65,12 @@ loc_val_te = ch_coef[tot_sample_tr:tot_sample_tr+snapshots,:,:]
 
 # Train model
 
-DNN_model(loc_val_tr, loc_val_te, config, target_rate, config.max_power, N_low,device)
+#DNN_model(loc_val_tr, loc_val_te, config, target_rate, config.max_power, N_low,device)
 
 
 
 ## Evaluation set
-new_snapshots = 64
+new_snapshots = 256
 new_ch_gain = torch.tensor(static_subnetwork_generator.generate_static_samples(config, new_snapshots),device=device).float()
 train_mean = torch.mean(torch.log(loc_val_tr))
 train_std = torch.std(torch.log(loc_val_tr))
@@ -85,6 +85,12 @@ results = evaluate_model_on_new_data(model_path, 1024,new_ch_gain, config, train
 print("Predictions for new data:", results["predictions"])
 print(f"New data capacity: {results['capacity']}")
 print(f"New data DNN Score: {results['score']}")
+print("---------------------------------------------------------------------------")
 print(f"Low-load Score: {results['low_load_score']}")
+print(f"Low-load mean subnet capacities: {results['low mean subnet capacities']}")
+print(f"low_load mean capacity : {results['low_load mean capacity']}")
+print("---------------------------------------------------------------------------")
 print(f"High-load Score: {results['high_load_score']}")
+print(f"High-load mean subnet capacities: {results['High mean subnet capacities']}")
+print(f"high_load mean capacity : {results['high_load mean capacity']}")
 
