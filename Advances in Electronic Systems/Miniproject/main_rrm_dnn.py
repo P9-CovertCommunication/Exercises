@@ -16,7 +16,7 @@ sweep_configuration = {
     "method": "grid",
     "metric": {"goal": "minimize", "name": "val_loss"},
     "parameters": {
-        "learning_rate": {'values':[0.] },#list(np.linspace(0.0005,0.005,5))},
+        "learning_rate": {'values':[0] },#list(np.linspace(0.0005,0.005,5))},
         "batch_size": {"values": [1024/2, 1024, 1024*2]},#[16, 32, 64]},
         "epochs": {"values": [100]},#[20, 50, 100, 150]},
         "dropout_p":{'values': [0, 0.1, 0.3, 0.4]},#[0, 0.2, 0.5]},
@@ -84,6 +84,7 @@ loc_val_te = ch_coef[tot_sample_tr:tot_sample_tr+snapshots,:,:]
 
 # Train model
 sweep_id = wandb.sweep(sweep=sweep_configuration, project="Advance in electronic system")
+wandb.agent(sweep_id, DNN_model)
 DNN_model(loc_val_tr, loc_val_te, config, target_rate, config.max_power, N_low,device)
 
 
